@@ -1,21 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Image Upload Gallery</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1, h3 {
+      text-align: center;
+      color: #444;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    button:hover {
+      background-color: #3367d6;
+    }
+
+    input[type="file"] {
+      margin-top: 10px;
+    }
+
+    #errorMessage {
+      color: #d8000c;
+      background-color: #ffdddd;
+      border: 1px solid #d8000c;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .image-container {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: white;
+      border-radius: 4px;
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .image-container img {
+      max-width: 100%;
+      max-height: 300px;
+      display: block;
+      margin: auto;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    #gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: center;
+    }
+
+    #gallery img {
+      max-width: 150px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      padding: 5px;
+      background-color: white;
+    }
+
+    .section {
+      margin-top: 30px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Upload Image to S3</h1>
-  <input type="file" id="imageInput" accept="image/*" />
-  <button onclick="uploadImage()">Upload</button>
+  <h1>Image Upload Gallery</h1>
 
-  <h3>Uploaded Image:</h3>
-  <img id="uploadedImage" style="max-width: 300px;" />
-  <h3>Cropped Image:</h3>
-  <img id="croppedImage" style="max-width: 300px;" />
+  <div style="text-align: center;">
+    <input type="file" id="imageInput" accept="image/*" />
+    <button onclick="uploadImage()">Upload</button>
+  </div>
 
-  <h3>Gallery:</h3>
-  <div id="gallery" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+  <div id="errorMessage"></div>
+
+  <div class="section image-container">
+    <h3>Uploaded Original Image</h3>
+    <img id="uploadedImage" src="" alt="Original will appear here" />
+  </div>
+
+  <div class="section image-container">
+    <h3>Cropped Image (300x300)</h3>
+    <img id="croppedImage" src="" alt="Cropped will appear here" />
+  </div>
+
+  <div class="section">
+    <h3>Gallery (This Session)</h3>
+    <div id="gallery"></div>
+  </div>
 
   <script>
     const API_URL = "https://9cla0o7tr6.execute-api.eu-west-1.amazonaws.com/upload";
@@ -36,52 +129,71 @@
       urls.forEach(url => {
         const img = document.createElement("img");
         img.src = url;
-        img.style.maxWidth = "150px";
         gallery.appendChild(img);
       });
     }
 
+    function showError(message) {
+      const errorDiv = document.getElementById("errorMessage");
+      errorDiv.textContent = message;
+      errorDiv.style.display = "block";
+    }
+
+    function clearError() {
+      const errorDiv = document.getElementById("errorMessage");
+      errorDiv.textContent = "";
+      errorDiv.style.display = "none";
+    }
+
     async function uploadImage() {
+      clearError();
+
       const fileInput = document.getElementById('imageInput');
       const file = fileInput.files[0];
-      if (!file) return alert('Please select a file');
+      if (!file) {
+        showError("אנא בחר קובץ להעלאה.");
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        showError("רק קבצי תמונה מותרים להעלאה.");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", file);
 
       try {
         const res = await fetch(API_URL, { method: "POST", body: formData });
-        if (!res.ok) throw new Error("Upload failed");
+        if (!res.ok) throw new Error("שרת ההעלאה החזיר שגיאה.");
 
         const data = await res.json();
 
-        // שמירת הקישורים המקוריים בסשן
         addToSessionImageKeys(data.originalUrl);
         addToSessionImageKeys(data.croppedUrl);
 
         document.getElementById("uploadedImage").src = data.originalUrl;
         document.getElementById("croppedImage").src = data.croppedUrl;
 
-        // הצגת כל התמונות (כולל כל המשתמשים)
         renderGallery(data.allImages);
       } catch (err) {
-        alert("Error: " + err.message);
+        showError("שגיאה בהעלאה: " + err.message);
       }
     }
 
     async function loadGallery() {
+      clearError();
       try {
         const res = await fetch(API_URL + "?fetchOnly=true", { method: "GET" });
-        if (!res.ok) throw new Error("Failed to fetch images");
+        if (!res.ok) throw new Error("טעינת התמונות נכשלה.");
 
         const data = await res.json();
         const sessionImages = getSessionImageKeys();
 
-        // הצגת את התמונות רק של המשתמש הזה (מהסשן)
         const filtered = data.allImages.filter(url => sessionImages.includes(url));
         renderGallery(filtered);
       } catch (err) {
-        console.error("Error loading gallery:", err.message);
+        showError("שגיאה בטעינת הגלריה: " + err.message);
       }
     }
 
