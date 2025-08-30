@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Upload Gallery</title>
+</head>
+<body>
+  <h1>Upload Image to S3</h1>
+  <input type="file" id="imageInput" accept="image/*" />
+  <button onclick="uploadImage()">Upload</button>
+
+  <h3>Uploaded Image:</h3>
+  <img id="uploadedImage" style="max-width: 300px;" />
+  <h3>Cropped Image:</h3>
+  <img id="croppedImage" style="max-width: 300px;" />
+
+  <h3>All Uploaded Images:</h3>
+  <div id="gallery" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+
+  <script>
+    const API_URL = "https://9cla0o7tr6.execute-api.eu-west-1.amazonaws.com/upload";
+
+    async function uploadImage() {
+      const fileInput = document.getElementById('imageInput');
+      const file = fileInput.files[0];
+      if (!file) return alert('Please select a file');
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(API_URL, { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Upload failed");
+
+        const data = await res.json();
+        document.getElementById("uploadedImage").src = data.originalUrl;
+        document.getElementById("croppedImage").src = data.croppedUrl;
+
+        renderGallery(data.allImages);
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    function renderGallery(urls) {
+      const gallery = document.getElementById("gallery");
+      gallery.innerHTML = "";
+      urls.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.style.maxWidth = "150px";
+        gallery.appendChild(img);
+      });
+    }
+
+    async function loadGallery() {
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fetchOnly: true })
+        });
+        if (!res.ok) throw new Error("Failed to fetch images");
+
+        const data = await res.json();
+        renderGallery(data.allImages);
+      } catch (err) {
+        console.error("Error loading gallery:", err.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadGallery);
+  </script>
+</body>
+</html>
