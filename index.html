@@ -18,32 +18,53 @@
       color: #444;
     }
 
+    .controls {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    input[type="file"]::file-selector-button {
+      background-color: #007BFF; /* Blue */
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
     button {
       padding: 10px 20px;
-      background-color: #4285f4;
+      background-color: #28a745; /* Green */
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      margin-left: 10px;
     }
 
     button:hover {
-      background-color: #3367d6;
-    }
-
-    input[type="file"] {
-      margin-top: 10px;
+      background-color: #218838;
     }
 
     #errorMessage {
+      position: relative;
       color: #d8000c;
       background-color: #ffdddd;
       border: 1px solid #d8000c;
-      padding: 10px;
+      padding: 12px 40px 12px 12px;
       margin-top: 15px;
       border-radius: 4px;
       display: none;
+    }
+
+    #errorMessage .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      cursor: pointer;
+      color: #d8000c;
+      font-weight: bold;
+      font-size: 16px;
     }
 
     .image-container {
@@ -57,7 +78,7 @@
 
     .image-container img {
       max-width: 100%;
-      max-height: 300px;
+      max-height: 400px;
       display: block;
       margin: auto;
       border-radius: 4px;
@@ -74,7 +95,7 @@
 
     #gallery img {
       max-width: 150px;
-      border: 1px solid #bbb;
+      border: 2px solid #87CEFA; /* Light Blue */
       border-radius: 4px;
       padding: 5px;
       background-color: white;
@@ -88,12 +109,15 @@
 <body>
   <h1>Image Upload Gallery</h1>
 
-  <div style="text-align: center;">
+  <div class="controls">
     <input type="file" id="imageInput" accept="image/*" />
     <button onclick="uploadImage()">Upload</button>
   </div>
 
-  <div id="errorMessage"></div>
+  <div id="errorMessage">
+    <span class="close-btn" onclick="clearError()">✖</span>
+    <span id="errorText"></span>
+  </div>
 
   <div class="section image-container">
     <h3>Uploaded Original Image</h3>
@@ -135,13 +159,15 @@
 
     function showError(message) {
       const errorDiv = document.getElementById("errorMessage");
-      errorDiv.textContent = message;
+      const errorText = document.getElementById("errorText");
+      errorText.textContent = message;
       errorDiv.style.display = "block";
     }
 
     function clearError() {
       const errorDiv = document.getElementById("errorMessage");
-      errorDiv.textContent = "";
+      const errorText = document.getElementById("errorText");
+      errorText.textContent = "";
       errorDiv.style.display = "none";
     }
 
@@ -151,12 +177,12 @@
       const fileInput = document.getElementById('imageInput');
       const file = fileInput.files[0];
       if (!file) {
-        showError("אנא בחר קובץ להעלאה.");
+        showError("Please select a file to upload.");
         return;
       }
 
       if (!file.type.startsWith("image/")) {
-        showError("רק קבצי תמונה מותרים להעלאה.");
+        showError("Only image files are allowed.");
         return;
       }
 
@@ -165,7 +191,7 @@
 
       try {
         const res = await fetch(API_URL, { method: "POST", body: formData });
-        if (!res.ok) throw new Error("שרת ההעלאה החזיר שגיאה.");
+        if (!res.ok) throw new Error("Upload failed on server.");
 
         const data = await res.json();
 
@@ -177,7 +203,7 @@
 
         renderGallery(data.allImages);
       } catch (err) {
-        showError("שגיאה בהעלאה: " + err.message);
+        showError("Upload error: " + err.message);
       }
     }
 
@@ -185,7 +211,7 @@
       clearError();
       try {
         const res = await fetch(API_URL + "?fetchOnly=true", { method: "GET" });
-        if (!res.ok) throw new Error("טעינת התמונות נכשלה.");
+        if (!res.ok) throw new Error("Failed to fetch gallery.");
 
         const data = await res.json();
         const sessionImages = getSessionImageKeys();
@@ -193,7 +219,7 @@
         const filtered = data.allImages.filter(url => sessionImages.includes(url));
         renderGallery(filtered);
       } catch (err) {
-        showError("שגיאה בטעינת הגלריה: " + err.message);
+        showError("Error loading gallery: " + err.message);
       }
     }
 
