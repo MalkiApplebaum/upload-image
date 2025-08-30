@@ -53,21 +53,24 @@
       });
     }
 
-    async function loadGallery() {
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fetchOnly: true })
-        });
-        if (!res.ok) throw new Error("Failed to fetch images");
 
-        const data = await res.json();
-        renderGallery(data.allImages);
-      } catch (err) {
-        console.error("Error loading gallery:", err.message);
-      }
+  async function loadGallery() {
+    try {
+      // שינוי: GET במקום POST
+      const res = await fetch(API_URL + "?fetchOnly=true", {
+        method: "GET"
+      });
+      if (!res.ok) throw new Error("Failed to fetch images");
+
+      const data = await res.json();
+      renderGallery(data.allImages);
+    } catch (err) {
+      console.error("Error loading gallery:", err.message);
     }
+  }
+
+
+
 
     window.addEventListener("DOMContentLoaded", loadGallery);
   </script>
