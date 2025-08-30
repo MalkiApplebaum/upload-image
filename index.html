@@ -14,11 +14,32 @@
   <h3>Cropped Image:</h3>
   <img id="croppedImage" style="max-width: 300px;" />
 
-  <h3>All Uploaded Images:</h3>
+  <h3>Gallery:</h3>
   <div id="gallery" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
 
   <script>
     const API_URL = "https://9cla0o7tr6.execute-api.eu-west-1.amazonaws.com/upload";
+
+    function getSessionImageKeys() {
+      return JSON.parse(sessionStorage.getItem("myImageKeys") || "[]");
+    }
+
+    function addToSessionImageKeys(url) {
+      const current = getSessionImageKeys();
+      current.push(url);
+      sessionStorage.setItem("myImageKeys", JSON.stringify(current));
+    }
+
+    function renderGallery(urls) {
+      const gallery = document.getElementById("gallery");
+      gallery.innerHTML = "";
+      urls.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.style.maxWidth = "150px";
+        gallery.appendChild(img);
+      });
+    }
 
     async function uploadImage() {
       const fileInput = document.getElementById('imageInput');
@@ -33,44 +54,36 @@
         if (!res.ok) throw new Error("Upload failed");
 
         const data = await res.json();
+
+        // שמירת הקישורים המקוריים בסשן
+        addToSessionImageKeys(data.originalUrl);
+        addToSessionImageKeys(data.croppedUrl);
+
         document.getElementById("uploadedImage").src = data.originalUrl;
         document.getElementById("croppedImage").src = data.croppedUrl;
 
+        // הצגת כל התמונות (כולל כל המשתמשים)
         renderGallery(data.allImages);
       } catch (err) {
         alert("Error: " + err.message);
       }
     }
 
-    function renderGallery(urls) {
-      const gallery = document.getElementById("gallery");
-      gallery.innerHTML = "";
-      urls.forEach(url => {
-        const img = document.createElement("img");
-        img.src = url;
-        img.style.maxWidth = "150px";
-        gallery.appendChild(img);
-      });
+    async function loadGallery() {
+      try {
+        const res = await fetch(API_URL + "?fetchOnly=true", { method: "GET" });
+        if (!res.ok) throw new Error("Failed to fetch images");
+
+        const data = await res.json();
+        const sessionImages = getSessionImageKeys();
+
+        // הצגת את התמונות רק של המשתמש הזה (מהסשן)
+        const filtered = data.allImages.filter(url => sessionImages.includes(url));
+        renderGallery(filtered);
+      } catch (err) {
+        console.error("Error loading gallery:", err.message);
+      }
     }
-
-
-  async function loadGallery() {
-    try {
-      // שינוי: GET במקום POST
-      const res = await fetch(API_URL + "?fetchOnly=true", {
-        method: "GET"
-      });
-      if (!res.ok) throw new Error("Failed to fetch images");
-
-      const data = await res.json();
-      renderGallery(data.allImages);
-    } catch (err) {
-      console.error("Error loading gallery:", err.message);
-    }
-  }
-
-
-
 
     window.addEventListener("DOMContentLoaded", loadGallery);
   </script>
