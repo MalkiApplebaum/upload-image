@@ -53,6 +53,7 @@ async function uploadImage() {
   formData.append("file", file);
 
   try {
+    
     const res = await fetch(API_URL, { method: "POST", body: formData });
     if (!res.ok) throw new Error("Upload failed on server.");
 
@@ -87,3 +88,4 @@ async function loadGallery() {
 }
 
 window.addEventListener("DOMContentLoaded", loadGallery);
+
